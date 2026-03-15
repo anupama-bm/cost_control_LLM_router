@@ -7,11 +7,7 @@ Why ABC (Abstract Base Class)?
     and forgets to implement .complete(), they get an error at import
     time — not at 3am when a request fails in production.
 
-Interview talking point:
-    "We used the Abstract Base Class pattern to enforce interface
-    consistency across all LLM providers. This is the same pattern
-    used in Python's own standard library — asyncio, collections.abc.
-    It gives us compile-time safety in a dynamic language."
+
 """
 
 from abc import ABC, abstractmethod
@@ -31,12 +27,7 @@ class LLMResponse:
     always gets back this same structure. This is the adapter pattern
     — we adapt provider-specific responses into our internal format.
 
-    Interview talking point:
-        "Every provider returns slightly different response shapes.
-        OpenAI, Groq, Anthropic — all different. By normalizing into
-        LLMResponse at the client boundary, the rest of the system
-        is completely provider-agnostic. Switching providers is
-        contained to one file."
+    
     """
     content: str  # The actual text response
     input_tokens: int  # Tokens consumed by the prompt
