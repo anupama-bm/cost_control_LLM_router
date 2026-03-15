@@ -202,11 +202,7 @@ class PromptClassifier:
             weights = [1, 3]
             primary = code_generation  ← correct, code needs a stronger model
 
-        Interview talking point:
-            "We resolve multi-tag ambiguity by taking the highest complexity tag.
-            This is a conservative strategy — we'd rather slightly overspend than
-            return a poor quality response. The feedback loop corrects overkill
-            over time by learning which tag combinations are actually simple."
+
         """
         return max(result.tags, key=lambda tag: TAG_COMPLEXITY_WEIGHT.get(tag, 0))
 
