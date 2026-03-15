@@ -13,14 +13,7 @@ Design principles:
       succession (cooldown period prevents thrashing)
     - All decisions are explainable — no black box
 
-Interview talking point:
-    "The adaptive engine uses statistical thresholds, not ML.
-    This was a deliberate choice. Statistical rules are:
-    auditable (you can explain every decision),
-    debuggable (you can trace why a rule changed),
-    predictable (no model drift or retraining needed).
-    ML would be appropriate at much higher scale where
-    the pattern space is too complex for explicit rules."
+
 """
 
 import structlog
@@ -81,12 +74,7 @@ class AdaptiveRoutingEngine:
         in memory, each instance would have different routing rules.
         By keeping all state in DB, all instances always agree.
 
-    Interview talking point:
-        "Stateless services are horizontally scalable by definition.
-        Any instance can handle any request because they all read
-        from the same source of truth — PostgreSQL. This is the
-        12-factor app principle: store state in a backing service,
-        not in application memory."
+    
     """
 
     async def analyze_and_adjust(
