@@ -9,11 +9,6 @@ Three layers of logic:
     2. Confidence fallback  (dynamic, low confidence = escalate)
     3. Adaptive routing     (learned, feedback history adjusts tiers)
 
-Interview talking point:
-    "The router separates three concerns that naive systems conflate:
-    what we know statically (tag→model mapping), what we know about
-    this specific request (confidence), and what we've learned over
-    time (feedback). Each layer is independently testable and tunable."
 """
 
 import structlog
@@ -219,10 +214,6 @@ def explain_routing_table() -> str:
     Returns a human-readable explanation of current routing rules.
     Useful for debugging and admin endpoints.
 
-    Interview talking point:
-        "We built in full routing transparency — any engineer can
-        query the system and see exactly why a prompt was routed
-        where it was. No black boxes in production infrastructure."
     """
     lines = ["Current Base Routing Table:"]
     lines.append("─" * 50)
