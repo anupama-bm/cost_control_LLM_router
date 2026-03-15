@@ -61,13 +61,6 @@ async def complete(
     Depends(get_db) injects an async database session.
     FastAPI handles session lifecycle (commit/rollback)
     through the get_db() generator in session.py.
-
-    Interview talking point:
-        "Dependency injection in FastAPI works through the
-        Depends() system. get_db is a generator that yields
-        a session and commits or rolls back after the request
-        completes. This gives us automatic transaction management
-        — we never manually commit in route handlers."
     """
 
     # Generate request ID early — used in logs throughout pipeline
