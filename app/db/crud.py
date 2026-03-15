@@ -242,11 +242,7 @@ async def get_feedback_stats_for_tag(
             "overkill_rate": 0.067,
         }
 
-    Interview talking point:
-        "We look back 7 days by default — recent enough to catch
-        model degradation quickly, long enough to avoid adjusting
-        on statistical noise. This is configurable. A high-traffic
-        system might use 1 day; a low-traffic system might need 30."
+    
     """
     cutoff = datetime.utcnow() - timedelta(days=lookback_days)
 
