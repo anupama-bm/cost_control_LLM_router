@@ -15,12 +15,7 @@ Design decisions:
     - GPT-4o is always the baseline (it's the most expensive tier)
     - CostCalculator is stateless — pure functions, no side effects
 
-Interview talking point:
-    "The cost calculator is intentionally stateless and pure —
-    given the same inputs it always returns the same outputs.
-    This makes it trivially testable and means we can run it
-    retrospectively on historical data to recalculate savings
-    with updated pricing."
+
 """
 
 from decimal import Decimal, ROUND_HALF_UP
@@ -45,14 +40,7 @@ settings = get_settings()
 #   GPT-4o charges $5/1M input but $15/1M output — 3x difference.
 #   If we averaged them, our cost calculations would be wrong by
 #   up to 50% depending on input/output ratio.
-#
-# Interview talking point:
-#   "We model input and output tokens separately because provider
-#   pricing is asymmetric. Output tokens cost more because they
-#   require autoregressive generation — each token depends on all
-#   previous tokens. Input tokens are processed in parallel.
-#   This asymmetry is fundamental to transformer architecture."
-# ─────────────────────────────────────────────────────────
+
 
 def _build_pricing_table() -> Dict[ModelName, tuple[Decimal, Decimal]]:
     """
@@ -269,12 +257,7 @@ class CostCalculator:
         Returns:
             Dict with daily, monthly, annual projections in USD
 
-        Interview talking point:
-            "We built savings projection into the cost calculator
-            because the platform needs to justify itself. When a
-            CTO asks 'is this worth it?', we can answer with a
-            specific dollar figure based on actual observed savings
-            rates — not estimates."
+        
         """
         daily = float(cost_saved_per_request) * requests_per_day
         monthly = daily * 30
