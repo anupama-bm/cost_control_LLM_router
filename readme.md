@@ -6,6 +6,8 @@ Instead of sending every prompt to the strongest model which isn't a cost-effect
 
 ---
 
+![Dashboard Overview](screenshots/dashboard_overview.png)
+
 ## What It Does
 
 - Accepts a prompt via a single API endpoint
@@ -19,6 +21,16 @@ Instead of sending every prompt to the strongest model which isn't a cost-effect
 ---
 
 ## Enterprise Architecture Decisions
+
+## Dashboard
+
+![Routing Decision Panel](screenshots/routing_decision.png)
+
+*The system classified "Explain data types in Kotlin" as `code_generation` with 95% confidence, routed to `llama-3-70b`, and saved $0.011565 vs GPT-4o.*
+
+![Feedback and Recent Requests](screenshots/feedback_table.png)
+
+*Click any row to auto-fill the feedback panel. Feedback history drives adaptive routing rule changes.*
 
 ### Pydantic — Input Validation at the API Boundary
 
@@ -49,7 +61,7 @@ Instead of sending every prompt to the strongest model which isn't a cost-effect
 - Underpowered rate above 30% → escalates one tier
 - Overkill rate above 40% → demotes one tier
 
-### The difficulty tags
+### The Difficulty Tags
 
 - simple_summarization
 - information_extraction
@@ -204,8 +216,6 @@ CREATE DATABASE llm_router_db OWNER llmrouter;
 GRANT ALL PRIVILEGES ON DATABASE llm_router_db TO llmrouter;
 ```
 
-### DataGrip / TablePlus
-
 Connect to `localhost:5432` and run the same three SQL statements above.
 
 ---
@@ -281,8 +291,12 @@ curl http://127.0.0.1:8000/api/v1/analytics/cost-summary?lookback_days=30
 # Routing rules
 curl http://127.0.0.1:8000/api/v1/analytics/routing-table
 ```
+![Swagger UI](screenshots/swagger_complete.png)
 
-Swagger UI: `http://127.0.0.1:8000/docs`
+*Full interactive API docs available at `http://127.0.0.1:8000/docs`*
+
+![Swagger All Endpoints](screenshots/swagger_endpoints.png)
+
 
 ---
 
