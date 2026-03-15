@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cost Control LLM Router</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #f4f3ef;
+    --surface:    #ffffff;
+    --surface2:   #f9f8f5;
+    --border:     #e2e0d8;
+    --border-strong: #c8c5bb;
+    --text:       #1a1916;
+    --text-2:     #4a4845;
+    --muted:      #8c8a84;
+    --accent:     #1a1916;
+    --green:      #1a6644;
+    --green-bg:   #edf7f2;
+    --green-border:#b8dece;
+    --red:        #8c1f1f;
+    --red-bg:     #fdf2f2;
+    --amber:      #7a4f00;
+    --amber-bg:   #fdf6e3;
+    --blue:       #1a3d6e;
+    --blue-bg:    #eef3fb;
+    --phi-color:  #1a3d6e;
+    --llama-color:#6e1a5a;
+    --mix-color:  #1a5a3d;
+    --radius:     6px;
+    --radius-lg:  10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 14px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .wordmark {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .wordmark span {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .refresh-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .refresh-icon { display: inline-block; transition: transform 0.6s; }
+  .refresh-icon.spinning { animation: spin 0.7s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── LAYOUT ── */
+  main {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── STAT CARDS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .stat-value.green  { color: var(--green); }
+  .stat-value.blue   { color: var(--blue);  }
+  .stat-value.amber  { color: var(--amber); }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  /* ── PROMPT AREA ── */
+  .prompt-section { margin-bottom: 32px; }
+
+  .prompt-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .prompt-box:focus-within {
+    border-color: var(--border-strong);
+    box-shadow: 0 0 0 3px rgba(26,25,22,0.05);
+  }
+
+  .prompt-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .prompt-top-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .caller-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    width: 180px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .caller-input::placeholder { color: var(--muted); }
+  .caller-input:focus { border-color: var(--border-strong); }
+
+  textarea {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.65;
+    padding: 16px 18px;
+    resize: none;
+    min-height: 96px;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  .prompt-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .char-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .send-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.1px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .send-btn:hover:not(:disabled) { opacity: 0.85; }
+  .send-btn:active:not(:disabled) { transform: scale(0.98); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-arrow {
+    font-size: 12px;
+    transition: transform 0.15s;
+  }
+
+  .send-btn:hover .send-arrow { transform: translateX(2px); }
+
+  /* ── RESPONSE AREA ── */
+  .response-area { display: none; margin-top: 12px; }
+  .response-area.visible { display: block; }
+
+  .response-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 12px;
+  }
+
+  .response-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .card-header-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+    letter-spacing: 0.2px;
+  }
+
+  .response-body {
+    padding: 16px 18px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .response-body::-webkit-scrollbar { width: 4px; }
+  .response-body::-webkit-scrollbar-track { background: transparent; }
+  .response-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── FEEDBACK ROW ── */
+  .feedback-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    flex-wrap: wrap;
+  }
+
+  .feedback-strip-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-right: 2px;
+  }
+
+  .star-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--border-strong);
+    transition: color 0.1s, transform 0.1s;
+    padding: 1px 2px;
+    line-height: 1;
+  }
+
+  .star-btn:hover  { color: var(--amber); transform: scale(1.15); }
+  .star-btn.active { color: var(--amber); }
+
+  .flag-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: 6px;
+  }
+
+  .flag-toggle:hover { border-color: var(--border-strong); }
+  .flag-toggle.active-under { background: var(--red-bg); border-color: #e0aaaa; color: var(--red); }
+  .flag-toggle.active-over  { background: var(--blue-bg); border-color: #aabde0; color: var(--blue); }
+
+  .submit-fb-btn {
+    margin-left: auto;
+    padding: 5px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .submit-fb-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* ── ROUTING META PANEL ── */
+  .meta-table { width: 100%; }
+
+  .meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .meta-row:last-child { border-bottom: none; }
+
+  .meta-key {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .meta-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .meta-val.green { color: var(--green); }
+  .meta-val.amber { color: var(--amber); }
+  .meta-val.blue  { color: var(--blue);  }
+  .meta-val.muted { color: var(--muted); }
+
+  /* ── MODEL CHIPS ── */
+  .chip {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  .chip-phi    { background: #eef3fb; color: var(--phi-color);   border: 1px solid #c5d5ef; }
+  .chip-llama  { background: #f7eef6; color: var(--llama-color); border: 1px solid #e0c5de; }
+  .chip-mixtral{ background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+
+  /* ── CONFIDENCE BAR ── */
+  .conf-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .conf-bar-track {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .conf-bar-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    width: 0;
+  }
+
+  /* ── ANALYTICS GRID ── */
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .panel-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .panel-body { padding: 16px; }
+
+  /* ── MODEL DISTRIBUTION ── */
+  .model-bar-item { margin-bottom: 14px; }
+  .model-bar-item:last-child { margin-bottom: 0; }
+
+  .model-bar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .model-bar-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .model-swatch {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .model-bar-stats {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .bar-track {
+    height: 5px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── COST BREAKDOWN ── */
+  .cost-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .cost-row:last-of-type { margin-bottom: 0; }
+
+  .cost-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    width: 70px;
+    flex-shrink: 0;
+  }
+
+  .cost-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .cost-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .cost-amount {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    width: 76px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .savings-summary {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--green-bg);
+    border: 1px solid var(--green-border);
+    border-radius: var(--radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .savings-summary-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--green);
+  }
+
+  .savings-summary-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  /* ── ROUTING TABLE ── */
+  .routing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .routing-item:last-child { border-bottom: none; }
+
+  .routing-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    flex: 1;
+  }
+
+  .override-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .pill-base     { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .pill-override { background: var(--amber-bg); color: var(--amber); border: 1px solid #e0d0aa; }
+
+  /* ── PROJECTIONS ── */
+  .projections-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .proj-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+  }
+
+  .proj-period {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .proj-amount {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: -0.5px;
+  }
+
+  .proj-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── REQUESTS TABLE ── */
+  --tcols: 130px 1fr 90px 110px 72px 88px 72px 180px;
+
+  .requests-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .table-head,
+  .table-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 90px 110px 88px 88px 80px 160px;
+  }
+
+  .table-head {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .th {
+    padding: 10px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.3;
+  }
+
+  .th:last-child { border-right: none; }
+
+  .table-body-scroll {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .table-body-scroll::-webkit-scrollbar { width: 5px; }
+  .table-body-scroll::-webkit-scrollbar-track { background: var(--surface2); }
+  .table-body-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  .table-row {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    align-items: stretch;
+  }
+
+  .table-row:last-child { border-bottom: none; }
+  .table-row:hover { background: var(--surface2); }
+
+  .td {
+    padding: 11px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 48px;
+  }
+
+  .td:last-child { border-right: none; }
+
+  .td-prompt {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    justify-content: flex-start;
+  }
+
+  .td-green { color: var(--green); font-weight: 600; }
+  .td-amber { color: var(--amber); }
+
+  .tag-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* ── FEEDBACK CELL ── */
+  .td-feedback {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 12px;
+  }
+
+  .fb-stars-display {
+    font-size: 12px;
+    color: var(--amber);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .fb-flags-display {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .fb-flag-under {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--red);
+    background: var(--red-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #e0aaaa;
+    white-space: nowrap;
+  }
+
+  .fb-flag-over {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--blue);
+    background: var(--blue-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #aabde0;
+    white-space: nowrap;
+  }
+
+  .fb-comment-display {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+  }
+
+  .fb-none {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--border-strong);
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    padding: 32px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── LOADING OVERLAY ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(244,243,239,0.85);
+    backdrop-filter: blur(3px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .overlay.active { display: flex; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  .overlay-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  .overlay-step {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 18px;
+    background: var(--text);
+    color: var(--bg);
+    border-radius: var(--radius);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    z-index: 200;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    max-width: 340px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--red); }
+  .toast.success { background: var(--green); }
+
+  /* ── STANDALONE FEEDBACK PANEL ── */
+  .feedback-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .feedback-panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .feedback-panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .feedback-hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .feedback-panel-body {
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .fb-id-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fb-id-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .fb-id-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .fb-id-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    width: 340px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .fb-id-input::placeholder { color: var(--muted); }
+  .fb-id-input:focus { border-color: var(--border-strong); }
+
+  .fb-hint-text {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .fb-hint-text strong {
+    color: var(--text-2);
+    font-weight: 600;
+  }
+
+  .fb-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .fb-stars-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fb-stars-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-right: 4px;
+  }
+
+  .fb-flags-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .fb-submit-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .fb-comment-input {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 12px;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .fb-comment-input::placeholder { color: var(--muted); }
+  .fb-comment-input:focus { border-color: var(--border-strong); }
+
+  /* Clickable request ID in table */
+  .td-id-clickable {
+    font-size: 10px;
+    color: var(--blue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.15s;
+  }
+
+  .td-id-clickable:hover {
+    text-decoration-color: var(--blue);
+  }
+
+  .copy-notice {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    display: none;
+  }
+
+  .copy-notice.show { display: inline; }
+
+  /* ── FADE-IN ── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in {
+    animation: fade-up 0.35s ease forwards;
+    opacity: 0;
+  }
+
+  .d1 { animation-delay: 0.04s; }
+  .d2 { animation-delay: 0.08s; }
+  .d3 { animation-delay: 0.12s; }
+  .d4 { animation-delay: 0.16s; }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <div class="overlay-label" id="overlayLabel">Classifying prompt</div>
+  <div class="overlay-step" id="overlayStep">initializing pipeline</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="wordmark">Cost Control LLM Router</div>
+  <div class="header-meta">
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">
+      <span class="refresh-icon" id="refreshIcon">&#8635;</span> Refresh
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="section-label">Overview — Last 30 Days</div>
+  <div class="stats-grid">
+    <div class="stat-card fade-in d1">
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value" id="statRequests">—</div>
+      <div class="stat-sub" id="statWindow">loading...</div>
+    </div>
+    <div class="stat-card fade-in d2">
+      <div class="stat-label">Total Saved</div>
+      <div class="stat-value green" id="statSaved">—</div>
+      <div class="stat-sub">vs GPT-4o baseline</div>
+    </div>
+    <div class="stat-card fade-in d3">
+      <div class="stat-label">Avg Latency</div>
+      <div class="stat-value amber" id="statLatency">—</div>
+      <div class="stat-sub">end-to-end pipeline</div>
+    </div>
+    <div class="stat-card fade-in d4">
+      <div class="stat-label">Savings Rate</div>
+      <div class="stat-value blue" id="statEfficiency">—</div>
+      <div class="stat-sub">cost efficiency</div>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="section-label">Send a Prompt</div>
+  <div class="prompt-section fade-in d2">
+    <div class="prompt-box">
+      <div class="prompt-top">
+        <span class="prompt-top-label">Prompt</span>
+        <input class="caller-input" id="callerIdInput" placeholder="caller-id (optional)" />
+      </div>
+      <textarea id="promptInput" rows="4"
+        placeholder="Enter your prompt. The system will classify, route to the optimal model, and return a response with full cost breakdown."
+        oninput="document.getElementById('charCount').textContent = this.value.length + ' chars'"></textarea>
+      <div class="prompt-bottom">
+        <span class="char-count" id="charCount">0 chars</span>
+        <button class="send-btn" id="sendBtn" onclick="sendPrompt()">
+          Route and Complete <span class="send-arrow">&#8594;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Response -->
+    <div class="response-area" id="responseArea">
+      <div class="response-layout">
+        <div class="response-card">
+          <div class="card-header">
+            <span class="card-header-title">Response</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span id="respModelChip" class="chip chip-phi">—</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);" id="respLatency">—</span>
+            </div>
+          </div>
+          <div class="response-body" id="responseText"></div>
+          <div class="feedback-strip">
+            <span class="feedback-strip-label">Rate</span>
+            <button class="star-btn" data-r="1" onclick="setRating(1)">&#9733;</button>
+            <button class="star-btn" data-r="2" onclick="setRating(2)">&#9733;</button>
+            <button class="star-btn" data-r="3" onclick="setRating(3)">&#9733;</button>
+            <button class="star-btn" data-r="4" onclick="setRating(4)">&#9733;</button>
+            <button class="star-btn" data-r="5" onclick="setRating(5)">&#9733;</button>
+            <button class="flag-toggle" id="underpoweredBtn" onclick="toggleFlag('underpowered')">Underpowered</button>
+            <button class="flag-toggle" id="overkillBtn" onclick="toggleFlag('overkill')">Overkill</button>
+            <button class="submit-fb-btn" onclick="submitFeedback()">Submit Feedback</button>
+          </div>
+        </div>
+
+        <div class="response-card">
+          <div class="card-header">
+            <span class="card-header-title">Routing Decision</span>
+            <div class="conf-bar-wrap" style="width:100px;">
+              <div class="conf-bar-track">
+                <div class="conf-bar-fill" id="confBar"></div>
+              </div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:28px;text-align:right;" id="confPct">—</span>
+            </div>
+          </div>
+          <div class="meta-table">
+            <div class="meta-row">
+              <span class="meta-key">Request ID</span>
+              <span class="meta-val muted" id="metaReqId" style="font-size:10px;">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Routed Model</span>
+              <span class="meta-val" id="metaModel">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Primary Tag</span>
+              <span class="meta-val" id="metaTag">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Confidence</span>
+              <span class="meta-val blue" id="metaConf">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Input Tokens</span>
+              <span class="meta-val" id="metaInTok">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Output Tokens</span>
+              <span class="meta-val" id="metaOutTok">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Actual Cost</span>
+              <span class="meta-val amber" id="metaActCost">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">GPT-4o Baseline</span>
+              <span class="meta-val muted" id="metaBaseCost">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Saved</span>
+              <span class="meta-val green" id="metaSaved" style="font-size:14px;">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics -->
+  <div class="section-label" style="margin-top:32px;">Analytics</div>
+  <div class="analytics-grid fade-in d3">
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Model Distribution</span>
+        <span class="panel-meta" id="distTotal">0 requests</span>
+      </div>
+      <div class="panel-body" id="modelBars">
+        <div class="empty">No data yet</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Cost Breakdown</span>
+        <span class="panel-meta">30 days</span>
+      </div>
+      <div class="panel-body" id="costBreakdown">
+        <div class="empty">No data yet</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Active Routing Rules</span>
+        <span class="panel-meta" id="overrideCount">0 overrides</span>
+      </div>
+      <div class="panel-body" id="routingRules">
+        <div class="empty">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Projections -->
+  <div class="section-label">Savings Projections</div>
+  <div class="projections-grid fade-in d4">
+    <div class="proj-card">
+      <div class="proj-period">Daily</div>
+      <div class="proj-amount" id="projDaily">$0.0000</div>
+      <div class="proj-sub">at current routing rate</div>
+    </div>
+    <div class="proj-card">
+      <div class="proj-period">Monthly</div>
+      <div class="proj-amount" id="projMonthly">$0.00</div>
+      <div class="proj-sub">30-day projection</div>
+    </div>
+    <div class="proj-card">
+      <div class="proj-period">Annual</div>
+      <div class="proj-amount" id="projAnnual">$0.00</div>
+      <div class="proj-sub">365-day projection</div>
+    </div>
+  </div>
+
+  <!-- Standalone Feedback Panel -->
+  <div class="section-label">Submit Feedback by Request ID</div>
+  <div class="feedback-panel fade-in d4">
+    <div class="feedback-panel-header">
+      <span class="feedback-panel-title">Feedback Submission</span>
+      <span class="feedback-hint">Click any row in the table below to auto-fill the Request ID</span>
+    </div>
+    <div class="feedback-panel-body">
+      <div class="fb-id-row">
+        <span class="fb-id-label">Request ID</span>
+        <div class="fb-id-input-wrap">
+          <input class="fb-id-input" id="fbRequestId"
+            placeholder="Paste a Request ID, or click any row in the table below..." />
+          <span class="copy-notice" id="copyNotice">Auto-filled</span>
+        </div>
+        <span class="fb-hint-text">
+          After sending a prompt, your <strong>Request ID</strong> appears in the Routing Decision panel on the right.
+          You can also click any row in the Recent Requests table to auto-fill this field instantly.
+        </span>
+      </div>
+      <div class="fb-controls">
+        <div class="fb-stars-row">
+          <span class="fb-stars-label">Rating</span>
+          <button class="star-btn" data-fb="1" onclick="setFbRating(1)">&#9733;</button>
+          <button class="star-btn" data-fb="2" onclick="setFbRating(2)">&#9733;</button>
+          <button class="star-btn" data-fb="3" onclick="setFbRating(3)">&#9733;</button>
+          <button class="star-btn" data-fb="4" onclick="setFbRating(4)">&#9733;</button>
+          <button class="star-btn" data-fb="5" onclick="setFbRating(5)">&#9733;</button>
+        </div>
+        <div class="fb-flags-row">
+          <button class="flag-toggle" id="fbUnderpoweredBtn" onclick="toggleFbFlag('underpowered')">Underpowered</button>
+          <button class="flag-toggle" id="fbOverkillBtn" onclick="toggleFbFlag('overkill')">Overkill</button>
+        </div>
+        <div class="fb-submit-row">
+          <input class="fb-comment-input" id="fbComment" placeholder="Optional comment..." />
+          <button class="submit-fb-btn" onclick="submitStandaloneFeedback()">Submit Feedback</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Requests -->
+  <div class="section-label">Recent Requests — click any row to fill the feedback panel above</div>
+  <div class="requests-table-wrap fade-in d4">
+    <div class="table-head">
+      <div class="th">Request ID</div>
+      <div class="th">Prompt</div>
+      <div class="th">Model</div>
+      <div class="th">Tag</div>
+      <div class="th">Confidence</div>
+      <div class="th">Saved</div>
+      <div class="th">Latency</div>
+      <div class="th">Feedback</div>
+    </div>
+    <div class="table-body-scroll">
+      <div id="requestsBody">
+        <div class="empty">No requests yet — send a prompt above</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const API = 'http://127.0.0.1:8000/api/v1';
+  let currentRequestId = null;
+  let currentRating    = 0;
+  let flags            = { underpowered: false, overkill: false };
+
+  /* ── Toast ── */
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (type ? ' ' + type : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = 'toast', 3200);
+  }
+
+  /* ── Standalone feedback state ── */
+  let fbRating = 0;
+  let fbFlags  = { underpowered: false, overkill: false };
+
+  function setFbRating(r) {
+    fbRating = r;
+    document.querySelectorAll('.star-btn[data-fb]').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.fb) <= r);
+    });
+  }
+
+  function toggleFbFlag(f) {
+    fbFlags[f] = !fbFlags[f];
+    if (f === 'underpowered')
+      document.getElementById('fbUnderpoweredBtn').classList.toggle('active-under', fbFlags[f]);
+    else
+      document.getElementById('fbOverkillBtn').classList.toggle('active-over', fbFlags[f]);
+  }
+
+  function fillFeedbackId(id) {
+    document.getElementById('fbRequestId').value = id;
+    const notice = document.getElementById('copyNotice');
+    notice.classList.add('show');
+    setTimeout(() => notice.classList.remove('show'), 2000);
+    document.getElementById('fbRequestId').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function submitStandaloneFeedback() {
+    const id      = document.getElementById('fbRequestId').value.trim();
+    const comment = document.getElementById('fbComment').value.trim();
+    if (!id)       { toast('Paste or click a Request ID first', 'error'); return; }
+    if (!fbRating) { toast('Select a star rating first', 'error'); return; }
+
+    try {
+      const body = {
+        request_id:   id,
+        rating:       fbRating,
+        underpowered: fbFlags.underpowered,
+        overkill:     fbFlags.overkill,
+      };
+      if (comment) body.comment = comment;
+
+      const res  = await fetch(`${API}/feedback`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!res.ok) { toast(data.detail || 'Feedback error', 'error'); return; }
+
+      toast(data.routing_adjustment_triggered
+        ? 'Feedback saved — routing rule updated'
+        : 'Feedback saved successfully', 'success');
+
+      // Reset panel
+      fbRating = 0;
+      fbFlags  = { underpowered: false, overkill: false };
+      document.querySelectorAll('.star-btn[data-fb]').forEach(b => b.classList.remove('active'));
+      document.getElementById('fbUnderpoweredBtn').classList.remove('active-under');
+      document.getElementById('fbOverkillBtn').classList.remove('active-over');
+      document.getElementById('fbRequestId').value = '';
+      document.getElementById('fbComment').value   = '';
+      await refreshAll();
+
+    } catch { toast('Failed to submit feedback', 'error'); }
+  }
+
+  /* ── Send prompt ── */
+  async function sendPrompt() {
+    const prompt   = document.getElementById('promptInput').value.trim();
+    const callerId = document.getElementById('callerIdInput').value.trim();
+    if (!prompt) { toast('Please enter a prompt', 'error'); return; }
+
+    const ov    = document.getElementById('overlay');
+    const label = document.getElementById('overlayLabel');
+    const step  = document.getElementById('overlayStep');
+
+    ov.classList.add('active');
+    document.getElementById('sendBtn').disabled = true;
+
+    const steps = [
+      ['Classifying prompt',      'tagging difficulty'],
+      ['Selecting model',         'applying routing rules'],
+      ['Calling LLM',             'awaiting response'],
+      ['Computing costs',         'calculating savings'],
+    ];
+    let si = 0;
+    const iv = setInterval(() => {
+      si = Math.min(si + 1, steps.length - 1);
+      label.textContent = steps[si][0];
+      step.textContent  = steps[si][1];
+    }, 800);
+
+    try {
+      const body = { prompt };
+      if (callerId) body.caller_id = callerId;
+
+      const res = await fetch(`${API}/complete`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+
+      clearInterval(iv);
+      ov.classList.remove('active');
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast((e.detail?.message || e.detail || 'Request failed'), 'error');
+        return;
+      }
+
+      const data = await res.json();
+      renderResponse(data);
+      await refreshAll();
+
+    } catch (e) {
+      clearInterval(iv);
+      ov.classList.remove('active');
+      toast('Connection failed — is the server running?', 'error');
+    } finally {
+      document.getElementById('sendBtn').disabled = false;
+    }
+  }
+
+  /* ── Render response ── */
+  function renderResponse(d) {
+    currentRequestId = d.request_id;
+    currentRating    = 0;
+    flags            = { underpowered: false, overkill: false };
+
+    document.querySelectorAll('.star-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('underpoweredBtn').classList.remove('active-under');
+    document.getElementById('overkillBtn').classList.remove('active-over');
+
+    document.getElementById('responseText').textContent = d.response;
+
+    const chip = document.getElementById('respModelChip');
+    chip.textContent = d.routed_model;
+    chip.className   = 'chip ' + chipClass(d.routed_model);
+
+    document.getElementById('respLatency').textContent = d.latency_ms.toFixed(0) + ' ms';
+
+    const pct = Math.round(d.classifier_confidence * 100);
+    document.getElementById('confBar').style.width = pct + '%';
+    document.getElementById('confPct').textContent  = pct + '%';
+
+    document.getElementById('metaReqId').textContent    = d.request_id.substring(0,20) + '...';
+    document.getElementById('metaModel').textContent    = d.routed_model;
+    document.getElementById('metaTag').textContent      = d.difficulty_tags[0] || '—';
+    document.getElementById('metaConf').textContent     = (d.classifier_confidence * 100).toFixed(1) + '%';
+    document.getElementById('metaInTok').textContent    = d.token_usage.input_tokens.toLocaleString();
+    document.getElementById('metaOutTok').textContent   = d.token_usage.output_tokens.toLocaleString();
+    document.getElementById('metaActCost').textContent  = '$' + d.cost_breakdown.actual_cost_usd.toFixed(6);
+    document.getElementById('metaBaseCost').textContent = '$' + d.cost_breakdown.baseline_gpt4o_cost_usd.toFixed(6);
+    document.getElementById('metaSaved').textContent    = '+$' + d.cost_breakdown.cost_saved_usd.toFixed(6);
+
+    document.getElementById('responseArea').classList.add('visible');
+    document.getElementById('responseArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function chipClass(m) {
+    if (m === 'phi-3' || m.includes('8b'))  return 'chip-phi';
+    if (m === 'llama-3-70b' || m.includes('70b')) return 'chip-llama';
+    return 'chip-mixtral';
+  }
+
+  /* ── Feedback ── */
+  function setRating(r) {
+    currentRating = r;
+    document.querySelectorAll('.star-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.r) <= r);
+    });
+  }
+
+  function toggleFlag(f) {
+    flags[f] = !flags[f];
+    if (f === 'underpowered')
+      document.getElementById('underpoweredBtn').classList.toggle('active-under', flags[f]);
+    else
+      document.getElementById('overkillBtn').classList.toggle('active-over', flags[f]);
+  }
+
+  async function submitFeedback() {
+    if (!currentRequestId) { toast('No request to rate', 'error'); return; }
+    if (!currentRating)     { toast('Select a star rating first', 'error'); return; }
+
+    try {
+      const res = await fetch(`${API}/feedback`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_id:   currentRequestId,
+          rating:       currentRating,
+          underpowered: flags.underpowered,
+          overkill:     flags.overkill,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) { toast(data.detail || 'Feedback error', 'error'); return; }
+
+      toast(data.routing_adjustment_triggered
+        ? 'Feedback saved — routing rule updated'
+        : 'Feedback saved', 'success');
+      await refreshAll();
+
+    } catch { toast('Failed to submit feedback', 'error'); }
+  }
+
+  /* ── Refresh all ── */
+  async function refreshAll() {
+    const icon = document.getElementById('refreshIcon');
+    const btn  = document.getElementById('refreshBtn');
+    icon.classList.add('spinning');
+    btn.disabled = true;
+    try {
+      await Promise.all([loadCostSummary(), loadRoutingTable(), loadRecentRequests()]);
+    } finally {
+      icon.classList.remove('spinning');
+      btn.disabled = false;
+    }
+  }
+
+  /* ── Cost summary ── */
+  async function loadCostSummary() {
+    try {
+      const res  = await fetch(`${API}/analytics/cost-summary?lookback_days=30`);
+      const data = await res.json();
+
+      document.getElementById('statRequests').textContent   = data.total_requests.toLocaleString();
+      document.getElementById('statSaved').textContent      = '$' + data.total_saved_usd.toFixed(4);
+      document.getElementById('statLatency').textContent    = data.avg_latency_ms.toFixed(0) + ' ms';
+      document.getElementById('statEfficiency').textContent = data.savings_percentage.toFixed(1) + '%';
+
+      if (data.projections) {
+        document.getElementById('projDaily').textContent   = '$' + data.projections.daily_savings_usd.toFixed(4);
+        document.getElementById('projMonthly').textContent = '$' + data.projections.monthly_savings_usd.toFixed(2);
+        document.getElementById('projAnnual').textContent  = '$' + data.projections.annual_savings_usd.toFixed(2);
+      }
+
+      const total     = data.total_requests || 1;
+      const breakdown = data.model_breakdown || [];
+      document.getElementById('distTotal').textContent = total + ' request' + (total !== 1 ? 's' : '');
+
+      const swatches = { 'phi-3': '#1a3d6e', 'llama-3-70b': '#6e1a5a', 'gpt-4o': '#1a6644' };
+
+      if (!breakdown.length) {
+        document.getElementById('modelBars').innerHTML = '<div class="empty">No data yet</div>';
+      } else {
+        document.getElementById('modelBars').innerHTML = breakdown.map(b => {
+          const pct   = ((b.request_count / total) * 100).toFixed(1);
+          const color = swatches[b.model] || '#333';
+          return `
+            <div class="model-bar-item">
+              <div class="model-bar-top">
+                <div class="model-bar-name">
+                  <span class="model-swatch" style="background:${color}"></span>
+                  ${b.model}
+                </div>
+                <div class="model-bar-stats">${b.request_count} req &nbsp; $${b.total_cost_usd.toFixed(6)}</div>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="background:${color}" data-pct="${pct}"></div>
+              </div>
+            </div>`;
+        }).join('');
+        requestAnimationFrame(() =>
+          document.querySelectorAll('.bar-fill').forEach(el => el.style.width = el.dataset.pct + '%'));
+      }
+
+      const actual   = data.total_actual_cost_usd;
+      const baseline = data.total_baseline_cost_usd;
+      const saved    = data.total_saved_usd;
+      const max      = Math.max(baseline, 0.000001);
+
+      document.getElementById('costBreakdown').innerHTML = `
+        <div class="cost-row">
+          <span class="cost-label">Baseline</span>
+          <div class="cost-track"><div class="cost-fill" style="background:#c8352a" data-pct="100"></div></div>
+          <span class="cost-amount">$${baseline.toFixed(5)}</span>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">Actual</span>
+          <div class="cost-track"><div class="cost-fill" style="background:#c87a00" data-pct="${(actual/max*100).toFixed(1)}"></div></div>
+          <span class="cost-amount">$${actual.toFixed(5)}</span>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">Saved</span>
+          <div class="cost-track"><div class="cost-fill" style="background:#1a6644" data-pct="${(saved/max*100).toFixed(1)}"></div></div>
+          <span class="cost-amount" style="color:var(--green)">$${saved.toFixed(5)}</span>
+        </div>
+        <div class="savings-summary">
+          <span class="savings-summary-label">Savings Rate</span>
+          <span class="savings-summary-val">${data.savings_percentage.toFixed(1)}%</span>
+        </div>`;
+
+      requestAnimationFrame(() =>
+        document.querySelectorAll('.cost-fill').forEach(el => el.style.width = el.dataset.pct + '%'));
+
+    } catch(e) { console.error(e); }
+  }
+
+  /* ── Routing table ── */
+  async function loadRoutingTable() {
+    try {
+      const res  = await fetch(`${API}/analytics/routing-table`);
+      const data = await res.json();
+      const overrides = data.adaptive_overrides || {};
+      const count     = Object.keys(overrides).length;
+      document.getElementById('overrideCount').textContent = count + ' override' + (count !== 1 ? 's' : '');
+
+      const html = (data.base_routing_table || []).map(r => {
+        const cc  = r.active_model === 'phi-3' ? 'chip-phi' :
+                    r.active_model.includes('llama') ? 'chip-llama' : 'chip-mixtral';
+        const pill = r.currently_overridden
+          ? `<span class="override-pill pill-override">OVERRIDE</span>`
+          : `<span class="override-pill pill-base">BASE</span>`;
+        return `
+          <div class="routing-item">
+            <span class="routing-tag">${r.tag.replace(/_/g,' ')}</span>
+            <span class="chip ${cc}">${r.active_model}</span>
+            ${pill}
+          </div>`;
+      }).join('');
+
+      document.getElementById('routingRules').innerHTML = html || '<div class="empty">No rules found</div>';
+    } catch(e) { console.error(e); }
+  }
+
+  /* ── Recent requests ── */
+  async function loadRecentRequests() {
+    try {
+      const res  = await fetch(`${API}/analytics/recent-requests?limit=20`);
+      const data = await res.json();
+
+      if (!data.requests?.length) {
+        document.getElementById('requestsBody').innerHTML =
+          '<div class="empty">No requests yet — send a prompt above</div>';
+        return;
+      }
+
+      document.getElementById('requestsBody').innerHTML = data.requests.map(r => {
+
+        // Build feedback cell
+        let fbHtml = '';
+        if (!r.feedback) {
+          fbHtml = `<span class="fb-none">—</span>`;
+        } else {
+          const fb      = r.feedback;
+          const filled  = '★'.repeat(fb.rating);
+          const empty   = '☆'.repeat(5 - fb.rating);
+          const under   = fb.underpowered ? `<span class="fb-flag-under">underpowered</span>` : '';
+          const over    = fb.overkill     ? `<span class="fb-flag-over">overkill</span>` : '';
+          const comment = fb.comment
+            ? `<span class="fb-comment-display" title="${fb.comment}">"${fb.comment}"</span>`
+            : '';
+          fbHtml = `
+            <span class="fb-stars-display">${filled}${empty}</span>
+            ${(under || over) ? `<div class="fb-flags-display">${under}${over}</div>` : ''}
+            ${comment}`;
+        }
+
+        return `
+          <div class="table-row"
+            onclick="fillFeedbackId('${r.request_id}')"
+            style="cursor:pointer;"
+            title="Click to fill feedback panel">
+            <div class="td td-id-clickable" title="${r.request_id}">
+              ${r.request_id.substring(0,13)}...
+            </div>
+            <div class="td td-prompt" title="${r.prompt || ''}">
+              ${r.prompt || '—'}
+            </div>
+            <div class="td">
+              <span class="chip ${chipClass(r.routed_model)}">${r.routed_model}</span>
+            </div>
+            <div class="td">
+              <span class="tag-label">${(r.difficulty_tags?.[0]||'—').replace(/_/g,' ')}</span>
+            </div>
+            <div class="td">${(r.confidence * 100).toFixed(0)}%</div>
+            <div class="td td-green">+$${parseFloat(r.cost_saved_usd).toFixed(5)}</div>
+            <div class="td td-amber">${r.latency_ms.toFixed(0)} ms</div>
+            <div class="td td-feedback">${fbHtml}</div>
+          </div>`;
+      }).join('');
+
+    } catch(e) { console.error(e); }
+  }
+
+  /* ── Keyboard shortcut ── */
+  document.getElementById('promptInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendPrompt();
+  });
+
+  /* ── Init ── */
+  refreshAll();
+  setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>
