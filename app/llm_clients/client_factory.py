@@ -1,20 +1,6 @@
 """
 Client Factory — maps ModelName enum to the right client instance.
 
-Why a factory?
-    The router produces a ModelName enum value.
-    Something needs to translate that into an actual client object.
-    The factory owns that mapping — one place, full control.
-
-    Without this: route handlers would have a giant if/elif block.
-    With this: route handlers call get_client(model_name), done.
-
-Interview talking point:
-    "We used the Factory pattern to decouple model selection from
-    client instantiation. The router doesn't know what a Phi3Client
-    is — it just knows ModelName.PHI3. The factory translates.
-    Adding a 4th model means adding one line to this factory —
-    nothing else in the codebase changes."
 """
 
 from functools import lru_cache
