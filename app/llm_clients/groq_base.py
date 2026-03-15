@@ -59,13 +59,7 @@ class GroqBaseLLMClient(BaseLLMClient):
             max_tokens: int = 1024,
             temperature: float = 0.7,
     ) -> LLMResponse:
-        """
-        Calls Groq API and normalizes response into LLMResponse.
-
-        Groq uses OpenAI-compatible API format — same request/response
-        structure as OpenAI. This is why switching from Groq to OpenAI
-        is trivial: change the client class, keep this method identical.
-        """
+        
         try:
             response = await self.client.chat.completions.create(
                 model=self.model_name,  # Defined by each subclass
