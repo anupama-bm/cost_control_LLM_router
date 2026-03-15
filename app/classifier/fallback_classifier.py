@@ -10,10 +10,6 @@ confidence. This routes to the strongest model (GPT-4o / best Groq model),
 which is the safe choice. We'd rather overspend on one request than
 return a bad response to a user.
 
-Interview talking point:
-"We designed for graceful degradation. The fallback classifier ensures
-100% uptime for the routing pipeline. It logs the failure so engineers
-are alerted, but the user never sees an error."
 """
 
 import structlog
