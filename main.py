@@ -62,14 +62,6 @@ async def lifespan(app: FastAPI):
     """
     Code before yield: runs on startup
     Code after yield:  runs on shutdown
-
-    Interview talking point:
-        "We use the lifespan context manager pattern instead of
-        deprecated startup/shutdown events. On startup we initialize
-        the database schema. In production this would be replaced
-        by Alembic migrations running in a pre-deploy step — you
-        never auto-migrate in production because it can cause
-        downtime on large tables."
     """
     # ── Startup ───────────────────────────────────────────
     logger.info("Starting LLM Router API")
